@@ -1,0 +1,306 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<!-- Stats Overview -->
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-icon indigo">
+            <i class="fa-solid fa-bug"></i>
+        </div>
+        <div class="stat-info">
+            <h4>{{ analysis_count }}</h4>
+            <p>Errors Analyzed</p>
+        </div>
+    </div>
+
+    <div class="stat-card">
+        <div class="stat-icon cyan">
+            <div class="stat-icon cyan">
+                <i class="fa-solid fa-book-bookmark"></i>
+            </div>
+        </div>
+        <div class="stat-info">
+            <h4>{{ kb_count }}</h4>
+            <p>RAG KB Articles</p>
+        </div>
+    </div>
+
+    <div class="stat-card">
+        <div class="stat-icon emerald">
+            <i class="fa-solid fa-bolt"></i>
+        </div>
+        <div class="stat-info">
+            <h4>0.4s</h4>
+            <p>RAG Retrieval Speed</p>
+        </div>
+    </div>
+
+    <div class="stat-card">
+        <div class="stat-icon amber">
+            <i class="fa-solid fa-brain"></i>
+        </div>
+        <div class="stat-info">
+            <h4>{% if has_api_key %}Gemini/Groq{% else %}Hybrid RAG{% endif %}</h4>
+            <p>Active Model Engine</p>
+        </div>
+    </div>
+</div>
+
+<!-- Main Error Input Section -->
+<div class="glass-card">
+    <div class="card-title">
+        <i class="fa-solid fa-wand-magic-sparkles"></i> AI Technical Error Input & Analysis
+    </div>
+
+    <!-- Quick Sample Error Loaders -->
+    <div style="margin-bottom: 0.75rem;">
+        <span style="font-size:0.8rem; color:var(--text-muted); font-weight:600; display:block; margin-bottom:0.4rem;">
+            <i class="fa-solid fa-lightbulb" style="color:var(--accent-amber);"></i> Quick Test Sample Errors (Click to try):
+        </span>
+        <div class="sample-pill-container">
+            {% for sample in sample_errors %}
+                <button type="button" class="sample-pill" 
+                        data-error="{{ sample.raw_error }}" 
+                        data-code="{{ sample.code_context }}" 
+                        data-framework="{{ sample.framework }}">
+                    <i class="fa-solid fa-terminal"></i> {{ sample.name }}
+                </button>
+            {% endfor %}
+        </div>
+    </div>
+
+    <form id="analyze-form" enctype="multipart/form-data">
+        <div class="tab-container">
+            <div class="tab-headers">
+                <button type="button" class="tab-btn active" data-tab="tab-paste">
+                    <i class="fa-solid fa-align-left"></i> Paste Stack Trace / Log
+                </button>
+                <button type="button" class="tab-btn" data-tab="tab-file">
+                    <i class="fa-solid fa-file-arrow-up"></i> Upload Log / Code File
+                </button>
+                <button type="button" class="tab-btn" data-tab="tab-image">
+                    <i class="fa-solid fa-image"></i> Screenshot Upload
+                </button>
+            </div>
+
+            <!-- Tab 1: Paste Text -->
+            <div class="tab-content active" id="tab-paste">
+                <div class="form-group">
+                    <label class="form-label">Error Message or Stack Trace</label>
+                    <textarea class="form-control" id="raw_error" name="raw_error" rows="6" placeholder="Paste your error log, exception stack trace, or terminal output here..."></textarea>
+                </div>
+            </div>
+
+            <!-- Tab 2: File Upload -->
+            <div class="tab-content" id="tab-file">
+                <div class="form-group">
+                    <label class="form-label">Upload Log File (.txt, .log, .py, .js, .json, .sql)</label>
+                    <div class="file-dropzone" id="file-dropzone">
+                        <i class="fa-solid fa-cloud-arrow-up"></i>
+                        <p style="font-size:0.95rem; font-weight:600; color:var(--text-main);">Drag & Drop file here or click to browse</p>
+                        <p style="font-size:0.8rem; color:var(--text-muted); margin-top:0.25rem;">Supports text logs, python scripts, stack trace files</p>
+                        <input type="file" id="error_file" name="error_file" style="display:none;" accept=".txt,.log,.py,.js,.json,.sql">
+                        <div id="file-preview-info" style="margin-top:0.75rem; color:var(--accent-cyan); font-size:0.85rem;"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab 3: Screenshot Upload -->
+            <div class="tab-content" id="tab-image">
+                <div class="form-group">
+                    <label class="form-label">Upload Error Screenshot / Image (.png, .jpg, .jpeg)</label>
+                    <input type="file" class="form-control" id="screenshot_file" name="screenshot_file" accept="image/*">
+                    <p style="font-size:0.8rem; color:var(--text-muted); margin-top:0.4rem;">
+                        <i class="fa-solid fa-circle-info"></i> Screenshot image will be analyzed directly via Gemini Vision API or OCR engine.
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1rem; margin-top:1rem;">
+            <div class="form-group">
+                <label class="form-label">Framework / Technology Stack</label>
+                <select class="form-select" id="framework" name="framework">
+                    <option value="Auto-Detect">Auto-Detect Stack</option>
+                    <option value="Django">Django (Python)</option>
+                    <option value="Python">Python (General)</option>
+                    <option value="JavaScript">JavaScript / React / Node.js</option>
+                    <option value="Database">Database / SQL / ORM</option>
+                    <option value="DevOps">DevOps / Docker / Kubernetes</option>
+                    <option value="API">REST API / CORS / HTTP</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Associated Code Context (Optional)</label>
+                <input type="text" class="form-control" id="code_context" name="code_context" placeholder="e.g. view function, component name, or code snippet line">
+            </div>
+        </div>
+
+        <div style="display:flex; justify-content:flex-end; margin-top:1rem;">
+            <button type="submit" class="btn btn-primary" id="btn-analyze">
+                <i class="fa-solid fa-sparkles"></i> Analyze Error with RAG AI
+            </button>
+        </div>
+    </form>
+</div>
+
+<!-- Loading Spinner -->
+<div class="glass-card spinner-container" id="analysis-spinner">
+    <div class="custom-spinner"></div>
+    <h4 style="font-size:1.1rem; color:var(--text-main);">Retrieving RAG Knowledge Base & Generating Analysis...</h4>
+    <p style="font-size:0.85rem; color:var(--text-muted); margin-top:0.5rem;">Cross-referencing error patterns and synthesizing step-by-step fix.</p>
+</div>
+
+<!-- Output Results Card -->
+<div class="glass-card results-card" id="analysis-results">
+    <div class="results-header">
+        <div>
+            <h2 id="res-title" style="font-size:1.3rem; font-weight:700; color:white;">Error Analysis Title</h2>
+            <span style="font-size:0.8rem; color:var(--text-muted);">Generated via Retrieval-Augmented Generation</span>
+        </div>
+        <span class="badge-ai" id="res-ai-badge">Gemini 2.5 Flash + RAG</span>
+    </div>
+
+    <!-- Feature 2: Error Explanation -->
+    <div class="analysis-section">
+        <div class="analysis-section-title">
+            <i class="fa-solid fa-comment-nodes"></i> 2. Error Explanation (Simple Language / ELI5)
+        </div>
+        <div class="explanation-box" id="res-explanation">
+            Explanation text will appear here.
+        </div>
+    </div>
+
+    <!-- Feature 3: Root Cause Detection -->
+    <div class="analysis-section">
+        <div class="analysis-section-title" style="color:var(--accent-amber);">
+            <i class="fa-solid fa-triangle-exclamation"></i> 3. Root Cause Detection
+        </div>
+        <div class="root-cause-box" id="res-root-cause">
+            Root cause analysis text will appear here.
+        </div>
+    </div>
+
+    <!-- Feature 4: Step-by-Step Solution -->
+    <div class="analysis-section">
+        <div class="analysis-section-title" style="color:var(--accent-emerald);">
+            <i class="fa-solid fa-list-check"></i> 4. Practical Step-by-Step Solution
+        </div>
+        <ol class="solution-steps-list" id="res-solution-steps">
+            <!-- Dynamic steps -->
+        </ol>
+    </div>
+
+    <!-- Feature 5: Code Suggestion -->
+    <div class="analysis-section" id="res-code-wrapper">
+        <div class="analysis-section-title" style="color:#a855f7;">
+            <i class="fa-solid fa-code"></i> 5. Corrected Code Suggestion
+        </div>
+        <div class="code-box-wrapper">
+            <div class="code-header">
+                <span><i class="fa-solid fa-file-code"></i> Recommended Code Fix</span>
+                <button type="button" class="code-copy-btn">
+                    <i class="fa-solid fa-copy"></i> Copy Code
+                </button>
+            </div>
+            <pre class="code-content" id="res-code-suggestion">// Code snippet here</pre>
+        </div>
+    </div>
+
+    <!-- Feature 6: RAG Knowledge Base Citations -->
+    <div class="analysis-section" style="margin-top:2rem; padding-top:1.5rem; border-top: 1px dashed var(--bg-card-border);">
+        <div class="analysis-section-title" style="color:var(--accent-cyan); font-size:0.9rem;">
+            <i class="fa-solid fa-database"></i> 6. RAG Knowledge Base Grounding & Matched Articles
+        </div>
+        <div id="res-rag-citations">
+            <!-- RAG match cards -->
+        </div>
+    </div>
+</div>
+
+<!-- Recent Analyses Preview -->
+{% if recent_logs %}
+<div class="glass-card">
+    <div class="card-title">
+        <i class="fa-solid fa-history"></i> Recent Error Analyses
+    </div>
+    <table class="custom-table">
+        <thead>
+            <tr>
+                <th>Error Title</th>
+                <th>Framework</th>
+                <th>AI Model</th>
+                <th>Date</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for log in recent_logs %}
+            <tr>
+                <td style="font-weight:600; color:white;">{{ log.title }}</td>
+                <td><span style="font-size:0.8rem; background:rgba(99,102,241,0.15); color:#a5b4fc; padding:0.2rem 0.6rem; border-radius:10px;">{{ log.framework }}</span></td>
+                <td style="font-size:0.85rem; color:var(--text-muted);">{{ log.ai_model_used }}</td>
+                <td style="font-size:0.82rem; color:var(--text-muted);">{{ log.created_at|date:"Y-m-d H:i" }}</td>
+                <td>
+                    <button type="button" class="btn btn-secondary" style="padding:0.3rem 0.7rem; font-size:0.8rem;" onclick="openHistoryModal({{ log.id }})">
+                        <i class="fa-solid fa-eye"></i> View
+                    </button>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+
+<!-- History Modal Popup -->
+<div class="modal-backdrop" id="history-modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <div>
+                <h3 id="modal-title" style="color:white; font-size:1.2rem;">Analysis Details</h3>
+                <span id="modal-meta" style="font-size:0.8rem; color:var(--text-muted);"></span>
+            </div>
+            <button class="modal-close" onclick="closeHistoryModal()">&times;</button>
+        </div>
+
+        <div style="margin-bottom:1rem;">
+            <h5 style="font-size:0.85rem; color:var(--text-muted); text-transform:uppercase;">Raw Error:</h5>
+            <pre style="background:#0d1117; padding:0.75rem; border-radius:6px; font-family:var(--font-mono); font-size:0.82rem; color:#f43f5e; overflow-x:auto;" id="modal-raw-error"></pre>
+        </div>
+
+        <div style="margin-bottom:1rem;">
+            <h5 style="font-size:0.85rem; color:var(--accent-cyan); text-transform:uppercase;">Explanation:</h5>
+            <div id="modal-explanation" style="font-size:0.9rem; color:#e5e7eb; background:rgba(11,15,25,0.6); padding:0.75rem; border-radius:6px;"></div>
+        </div>
+
+        <div style="margin-bottom:1rem;">
+            <h5 style="font-size:0.85rem; color:var(--accent-amber); text-transform:uppercase;">Root Cause:</h5>
+            <div id="modal-root-cause" style="font-size:0.9rem; color:#fef3c7; background:rgba(245,158,11,0.08); padding:0.75rem; border-radius:6px;"></div>
+        </div>
+
+        <div style="margin-bottom:1rem;">
+            <h5 style="font-size:0.85rem; color:var(--accent-emerald); text-transform:uppercase;">Step-by-Step Solution:</h5>
+            <ul id="modal-solution-steps" style="padding-left:1.2rem; font-size:0.9rem; color:#e5e7eb;"></ul>
+        </div>
+
+        <div style="margin-bottom:1rem;">
+            <h5 style="font-size:0.85rem; color:#a855f7; text-transform:uppercase;">Code Fix:</h5>
+            <pre style="background:#0d1117; padding:0.75rem; border-radius:6px; font-family:var(--font-mono); font-size:0.82rem; color:#e6edf3;" id="modal-code-suggestion"></pre>
+        </div>
+
+        <div style="display:flex; justify-content:space-between; margin-top:1.5rem; padding-top:1rem; border-top:1px solid var(--bg-card-border);">
+            <div style="display:flex; gap:0.5rem;">
+                <a id="modal-export-md" class="btn btn-secondary" style="padding:0.4rem 0.8rem; font-size:0.8rem;" target="_blank">
+                    <i class="fa-solid fa-file-markdown"></i> Export Markdown
+                </a>
+                <a id="modal-export-json" class="btn btn-secondary" style="padding:0.4rem 0.8rem; font-size:0.8rem;" target="_blank">
+                    <i class="fa-solid fa-file-code"></i> Export JSON
+                </a>
+            </div>
+            <button class="btn btn-secondary" onclick="closeHistoryModal()">Close</button>
+        </div>
+    </div>
+</div>
+{% endblock %}

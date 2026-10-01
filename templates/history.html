@@ -1,0 +1,138 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="glass-card">
+    <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:1rem; margin-bottom:1.5rem;">
+        <div>
+            <h2 style="font-size:1.3rem; font-weight:700; color:white;">
+                <i class="fa-solid fa-clock-rotate-left" style="color:var(--primary);"></i> Error Analysis History Logs
+            </h2>
+            <p style="font-size:0.85rem; color:var(--text-muted);">
+                View and export past error diagnostic reports and AI code fixes.
+            </p>
+        </div>
+    </div>
+
+    <!-- Search & Filters -->
+    <form method="get" action="{% url 'history' %}" style="display:flex; gap:1rem; flex-wrap:wrap; margin-bottom:1.5rem;">
+        <input type="text" name="q" class="form-control" style="flex:1; min-width:220px;" placeholder="Search history by error title or stack trace..." value="{{ query }}">
+        
+        <select name="framework" class="form-select" style="width:200px;" onchange="this.form.submit()">
+            <option value="All">All Frameworks</option>
+            <option value="Django" {% if framework_filter == 'Django' %}selected{% endif %}>Django</option>
+            <option value="Python" {% if framework_filter == 'Python' %}selected{% endif %}>Python</option>
+            <option value="JavaScript" {% if framework_filter == 'JavaScript' %}selected{% endif %}>JavaScript / React</option>
+            <option value="Database" {% if framework_filter == 'Database' %}selected{% endif %}>Database</option>
+            <option value="DevOps" {% if framework_filter == 'DevOps' %}selected{% endif %}>DevOps / Docker</option>
+            <option value="API" {% if framework_filter == 'API' %}selected{% endif %}>REST API</option>
+        </select>
+
+        <button type="submit" class="btn btn-secondary">
+            <i class="fa-solid fa-filter"></i> Filter History
+        </button>
+    </form>
+
+    <table class="custom-table">
+        <thead>
+            <tr>
+                <th>Error Title</th>
+                <th>Framework</th>
+                <th>AI Model</th>
+                <th>Date & Time</th>
+                <th>Export / View</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for log in logs %}
+            <tr>
+                <td style="font-weight:600; color:white;">
+                    <i class="fa-solid fa-bug" style="color:var(--accent-rose); margin-right:0.4rem;"></i>
+                    {{ log.title }}
+                </td>
+                <td>
+                    <span style="font-size:0.8rem; background:rgba(99,102,241,0.15); color:#a5b4fc; padding:0.2rem 0.6rem; border-radius:10px; border:1px solid rgba(99,102,241,0.3);">
+                        {{ log.framework }}
+                    </span>
+                </td>
+                <td style="font-size:0.85rem; color:var(--text-muted);">
+                    <span class="badge-ai" style="font-size:0.75rem;">{{ log.ai_model_used }}</span>
+                </td>
+                <td style="font-size:0.82rem; color:var(--text-muted);">
+                    {{ log.created_at|date:"Y-m-d H:i:s" }}
+                </td>
+                <td>
+                    <div style="display:flex; gap:0.4rem;">
+                        <button type="button" class="btn btn-secondary" style="padding:0.35rem 0.75rem; font-size:0.8rem;" onclick="openHistoryModal({{ log.id }})">
+                            <i class="fa-solid fa-eye"></i> View Detail
+                        </button>
+                        <a href="{% url 'api_history_export' log.id %}?format=md" class="btn btn-secondary" style="padding:0.35rem 0.6rem; font-size:0.8rem;" target="_blank" title="Export Markdown">
+                            <i class="fa-solid fa-file-markdown"></i>
+                        </a>
+                        <a href="{% url 'api_history_export' log.id %}?format=json" class="btn btn-secondary" style="padding:0.35rem 0.6rem; font-size:0.8rem;" target="_blank" title="Export JSON">
+                            <i class="fa-solid fa-file-code"></i>
+                        </a>
+                    </div>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="5" style="text-align:center; padding:3rem; color:var(--text-muted);">
+                    <i class="fa-solid fa-clock-rotate-left" style="font-size:2rem; margin-bottom:0.5rem; display:block; color:var(--text-dim);"></i>
+                    No error analysis logs found. Perform an error analysis on the Dashboard to save results here!
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- Modal Popup reused from dashboard -->
+<div class="modal-backdrop" id="history-modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <div>
+                <h3 id="modal-title" style="color:white; font-size:1.2rem;">Analysis Details</h3>
+                <span id="modal-meta" style="font-size:0.8rem; color:var(--text-muted);"></span>
+            </div>
+            <button class="modal-close" onclick="closeHistoryModal()">&times;</button>
+        </div>
+
+        <div style="margin-bottom:1rem;">
+            <h5 style="font-size:0.85rem; color:var(--text-muted); text-transform:uppercase;">Raw Error Log:</h5>
+            <pre style="background:#0d1117; padding:0.75rem; border-radius:6px; font-family:var(--font-mono); font-size:0.82rem; color:#f43f5e; overflow-x:auto;" id="modal-raw-error"></pre>
+        </div>
+
+        <div style="margin-bottom:1rem;">
+            <h5 style="font-size:0.85rem; color:var(--accent-cyan); text-transform:uppercase;">2. Explanation (Simple Language):</h5>
+            <div id="modal-explanation" style="font-size:0.9rem; color:#e5e7eb; background:rgba(11,15,25,0.6); padding:0.75rem; border-radius:6px;"></div>
+        </div>
+
+        <div style="margin-bottom:1rem;">
+            <h5 style="font-size:0.85rem; color:var(--accent-amber); text-transform:uppercase;">3. Root Cause:</h5>
+            <div id="modal-root-cause" style="font-size:0.9rem; color:#fef3c7; background:rgba(245,158,11,0.08); padding:0.75rem; border-radius:6px;"></div>
+        </div>
+
+        <div style="margin-bottom:1rem;">
+            <h5 style="font-size:0.85rem; color:var(--accent-emerald); text-transform:uppercase;">4. Step-by-Step Solution:</h5>
+            <ul id="modal-solution-steps" style="padding-left:1.2rem; font-size:0.9rem; color:#e5e7eb;"></ul>
+        </div>
+
+        <div style="margin-bottom:1rem;">
+            <h5 style="font-size:0.85rem; color:#a855f7; text-transform:uppercase;">5. Code Fix:</h5>
+            <pre style="background:#0d1117; padding:0.75rem; border-radius:6px; font-family:var(--font-mono); font-size:0.82rem; color:#e6edf3;" id="modal-code-suggestion"></pre>
+        </div>
+
+        <div style="display:flex; justify-content:space-between; margin-top:1.5rem; padding-top:1rem; border-top:1px solid var(--bg-card-border);">
+            <div style="display:flex; gap:0.5rem;">
+                <a id="modal-export-md" class="btn btn-secondary" style="padding:0.4rem 0.8rem; font-size:0.8rem;" target="_blank">
+                    <i class="fa-solid fa-file-markdown"></i> Export Markdown
+                </a>
+                <a id="modal-export-json" class="btn btn-secondary" style="padding:0.4rem 0.8rem; font-size:0.8rem;" target="_blank">
+                    <i class="fa-solid fa-file-code"></i> Export JSON
+                </a>
+            </div>
+            <button class="btn btn-secondary" onclick="closeHistoryModal()">Close</button>
+        </div>
+    </div>
+</div>
+{% endblock %}

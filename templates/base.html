@@ -1,0 +1,93 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ page_title|default:"AI Technical Error Analysis System" }}</title>
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Custom Design CSS -->
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+</head>
+<body>
+    <div class="bg-glow-orb-1"></div>
+    <div class="bg-glow-orb-2"></div>
+
+    <div class="app-container">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar">
+            <div class="brand">
+                <div class="brand-icon">
+                    <i class="fa-solid fa-brain-circuit"></i>
+                </div>
+                <div class="brand-text">
+                    <h1>Error AI</h1>
+                    <span>RAG Knowledge Engine</span>
+                </div>
+            </div>
+
+            <nav class="nav-menu">
+                <a href="{% url 'dashboard' %}" class="nav-link {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">
+                    <i class="fa-solid fa-gauge-high"></i> Dashboard
+                </a>
+                <a href="{% url 'knowledge_base' %}" class="nav-link {% if request.resolver_match.url_name == 'knowledge_base' %}active{% endif %}">
+                    <i class="fa-solid fa-database"></i> RAG Knowledge Base
+                </a>
+                <a href="{% url 'history' %}" class="nav-link {% if request.resolver_match.url_name == 'history' %}active{% endif %}">
+                    <i class="fa-solid fa-clock-rotate-left"></i> Analysis History
+                </a>
+                <a href="{% url 'settings' %}" class="nav-link {% if request.resolver_match.url_name == 'settings' %}active{% endif %}">
+                    <i class="fa-solid fa-sliders"></i> System Settings
+                </a>
+            </nav>
+
+            <div class="sidebar-footer">
+                <div class="system-badge">
+                    <div class="system-badge-dot"></div>
+                    <span>RAG Engine Active</span>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Workspace -->
+        <div class="main-wrapper">
+            <header class="top-header">
+                <div class="page-title">
+                    {{ page_title|default:"AI Error Analyzer" }}
+                </div>
+
+                <div class="header-actions">
+                    <div class="rag-pill">
+                        <i class="fa-solid fa-layer-group"></i> RAG Augmented AI
+                    </div>
+                    {% if has_api_key %}
+                        <span style="font-size:0.8rem; color:var(--accent-emerald); font-weight:600;">
+                            <i class="fa-solid fa-circle-check"></i> LLM Key Connected
+                        </span>
+                    {% else %}
+                        <a href="{% url 'settings' %}" style="font-size:0.8rem; color:var(--accent-amber); font-weight:600; text-decoration:none;">
+                            <i class="fa-solid fa-triangle-exclamation"></i> Add API Key
+                        </a>
+                    {% endif %}
+                </div>
+            </header>
+
+            <main class="content-body">
+                {% block content %}{% endblock %}
+            </main>
+        </div>
+    </div>
+
+    <!-- JavaScript -->
+    <script src="{% static 'js/app.js' %}"></script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

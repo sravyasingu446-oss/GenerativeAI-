@@ -1,0 +1,69 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="glass-card" style="max-width:800px; margin: 0 auto;">
+    <div style="margin-bottom:1.5rem; border-bottom:1px solid var(--bg-card-border); padding-bottom:1rem;">
+        <h2 style="font-size:1.3rem; font-weight:700; color:white;">
+            <i class="fa-solid fa-sliders" style="color:var(--primary);"></i> System Settings & AI Configuration
+        </h2>
+        <p style="font-size:0.85rem; color:var(--text-muted); margin-top:0.25rem;">
+            Configure AI Provider API Keys (Gemini / Groq) and RAG Knowledge Retrieval parameters.
+        </p>
+    </div>
+
+    <form id="settings-form">
+        <div class="form-group">
+            <label class="form-label">
+                <i class="fa-solid fa-key" style="color:var(--accent-cyan);"></i> Google Gemini API Key
+            </label>
+            <input type="password" name="gemini_api_key" class="form-control" value="{{ settings.gemini_api_key }}" placeholder="AIzaSy...">
+            <p style="font-size:0.8rem; color:var(--text-muted); margin-top:0.3rem;">
+                Used for Gemini 2.5 / 1.5 Flash models and multimodal screenshot analysis. Get your free key from Google AI Studio.
+            </p>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label">
+                <i class="fa-solid fa-bolt" style="color:var(--accent-amber);"></i> Groq API Key
+            </label>
+            <input type="password" name="groq_api_key" class="form-control" value="{{ settings.groq_api_key }}" placeholder="gsk_...">
+            <p style="font-size:0.8rem; color:var(--text-muted); margin-top:0.3rem;">
+                Used for ultra-fast Llama 3.3 70B inference on Groq Cloud.
+            </p>
+        </div>
+
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1rem; margin-top:1.5rem;">
+            <div class="form-group">
+                <label class="form-label">Preferred AI Provider</label>
+                <select name="preferred_provider" class="form-select">
+                    <option value="auto" {% if settings.preferred_provider == 'auto' %}selected{% endif %}>Auto-Select (Gemini -> Groq -> RAG Hybrid)</option>
+                    <option value="gemini" {% if settings.preferred_provider == 'gemini' %}selected{% endif %}>Google Gemini API</option>
+                    <option value="groq" {% if settings.preferred_provider == 'groq' %}selected{% endif %}>Groq API (Llama 3.3)</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">RAG Top-K Knowledge Items to Retrieve</label>
+                <input type="number" name="rag_top_k" class="form-control" min="1" max="10" value="{{ settings.rag_top_k }}">
+            </div>
+        </div>
+
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:2rem; padding-top:1.5rem; border-top:1px solid var(--bg-card-border);">
+            <button type="button" class="btn btn-secondary" onclick="seedKB()">
+                <i class="fa-solid fa-arrows-rotate"></i> Re-seed RAG Knowledge Base
+            </button>
+            <button type="submit" class="btn btn-primary">
+                <i class="fa-solid fa-floppy-disk"></i> Save System Settings
+            </button>
+        </div>
+    </form>
+</div>
+
+<script>
+function seedKB() {
+    fetch('/api/seed-kb/', { method: 'POST' })
+    .then(res => res.json())
+    .then(data => alert(data.message));
+}
+</script>
+{% endblock %}
